@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bank DApp Infura</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #1d2433;
+      --muted: #667085;
+      --accent: #2f54eb;
+      --accent-text: #ffffff;
+      --ok: #16a34a;
+      --err: #dc2626;
+      --border: #e4e7ec;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f1420;
+        --card: #182030;
+        --text: #e6e9f0;
+        --muted: #98a2b3;
+        --accent: #5b7cff;
+        --border: #2a3448;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, "Noto Sans Thai", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { margin: 0 0 4px; font-size: 1.6rem; }
+    h2 { margin: 0 0 12px; font-size: 1.05rem; }
+    .sub { color: var(--muted); margin: 0 0 20px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    .student { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; }
+    .student dt { color: var(--muted); }
+    .student dd { margin: 0; font-weight: 600; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    input {
+      flex: 1;
+      min-width: 0;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+    button {
+      padding: 10px 16px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: var(--accent-text);
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .kv { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; word-break: break-all; }
+    .kv span:nth-child(odd) { color: var(--muted); }
+    .big { font-size: 1.8rem; font-weight: 700; margin: 4px 0 12px; }
+    .note { color: var(--muted); font-size: 0.85rem; margin: 8px 0 0; }
+    #status { min-height: 1.4em; font-size: 0.92rem; }
+    #status.ok { color: var(--ok); }
+    #status.err { color: var(--err); }
+    #log { margin: 0; padding-left: 18px; font-size: 0.88rem; color: var(--muted); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    th { color: var(--muted); font-weight: 600; }
+    a { color: var(--accent); }
+    .in { color: var(--ok); }
+    .out { color: var(--err); }
+    @media (max-width: 480px) {
+      .kv { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Bank DApp</h1>
+    <p class="sub">ระบบธนาคารบน Smart Contract ผ่าน Infura + Metamask · Sepolia</p>
+
+    <div class="card">
+      <h2>ข้อมูลนักศึกษา</h2>
+      <dl class="student">
+        <dt>รหัสนักศึกษา</dt><dd>66002022</dd>
+        <dt>ชื่อ-สกุล</dt><dd>คฑาวุธ เมืองพรหม</dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h2>1. เชื่อมต่อ Smart Contract ผ่าน Infura</h2>
+      <div class="kv">
+        <span>Infura RPC</span><span id="infuraStatus">กำลังเชื่อมต่อ...</span>
+        <span>Latest block</span><span id="blockNumber">-</span>
+        <span>Contract</span><span id="contractShown">-</span>
+        <span>ETH ใน contract</span><span id="contractEth">-</span>
+      </div>
+      <p class="note">อ่านข้อมูลจาก blockchain ผ่าน Infura ได้เลยโดยไม่ต้องมี Metamask</p>
+    </div>
+
+    <div class="card">
+      <h2>2. เชื่อมต่อ Metamask</h2>
+      <div class="row" style="margin-bottom:12px">
+        <button id="btnConnect">Connect Metamask</button>
+      </div>
+      <div class="kv">
+        <span>Wallet</span><span id="account">-</span>
+        <span>Network</span><span id="network">-</span>
+        <span>Wallet ETH</span><span id="walletEth">-</span>
+      </div>
+      <p class="note">ใช้ Metamask เซ็นธุรกรรม Deposit / Withdraw</p>
+    </div>
+
+    <div class="card">
+      <h2>3. Check Balance</h2>
+      <div class="big"><span id="bankBalance">-</span> ETH</div>
+      <button id="btnCheck" disabled>Check Balance</button>
+    </div>
+
+    <div class="card">
+      <h2>4. Deposit</h2>
+      <div class="row">
+        <input id="depositAmt" type="number" min="0" step="any" placeholder="จำนวน ETH เช่น 0.01" />
+        <button id="btnDeposit" disabled>Deposit</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>5. Withdraw</h2>
+      <div class="row">
+        <input id="withdrawAmt" type="number" min="0" step="any" placeholder="จำนวน ETH เช่น 0.01" />
+        <button id="btnWithdraw" disabled>Withdraw</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>สถานะ</h2>
+      <div id="status">ยังไม่ได้เชื่อมต่อ Metamask</div>
+      <ol id="log"></ol>
+    </div>
+
+    <div class="card">
+      <h2>ประวัติธุรกรรม (Event จาก Infura)</h2>
+      <div class="row" style="margin-bottom:10px">
+        <button id="btnHistory">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Block</th><th>Event</th><th>Owner</th><th>Amount (ETH)</th><th>Tx</th></tr></thead>
+          <tbody id="history"><tr><td colspan="5">-</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Infura API Key (MetaMask Developer dashboard)
+    const INFURA_API_KEY = "11f96ae4defc43b3b89eca6862521da3";
+    const INFURA_URL = `https://sepolia.infura.io/v3/${INFURA_API_KEY}`;
+
+    const CONTRACT_ADDRESS = "0x940ea8bd852f62f77b78b58480e54ff9838b5e6f";
+    const DEPLOY_BLOCK = 12103475; // block ที่ deploy contract ใช้เป็นจุดเริ่มค้น event
+    const SEPOLIA_CHAIN_ID = "0xaa36a7"; // 11155111
+    const EXPLORER = "https://sepolia.etherscan.io";
+
+    const ABI = [
+      "function deposit() payable",
+      "function withdraw(uint256 amount)",
+      "function checkBlance() view returns (uint256 balance)",
+      "event Deposit(address indexed owner, uint256 amount)",
+      "event Withdraw(address indexed owner, uint256 amount)"
+    ];
+
+    // อ่านข้อมูลผ่าน Infura, เขียนข้อมูล (เซ็นธุรกรรม) ผ่าน Metamask
+    const infura = new ethers.JsonRpcProvider(INFURA_URL, 11155111, { staticNetwork: true });
+    const readContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, infura);
+    let signer, writeContract, account;
+
+    const $ = (id) => document.getElementById(id);
+    const short = (a) => a.slice(0, 6) + "..." + a.slice(-4);
+
+    function setStatus(msg, type = "") {
+      $("status").textContent = msg;
+      $("status").className = type;
+    }
+
+    function addLog(msg) {
+      const li = document.createElement("li");
+      li.textContent = new Date().toLocaleTimeString() + " - " + msg;
+      $("log").prepend(li);
+    }
+
+    function errMsg(e) {
+      return e?.reason || e?.info?.error?.message || e?.shortMessage || e?.message || String(e);
+    }
+
+    function setButtons(enabled) {
+      ["btnCheck", "btnDeposit", "btnWithdraw"].forEach((id) => ($(id).disabled = !enabled));
+    }
+
+    async function loadContractInfo() {
+      try {
+        const [block, eth] = await Promise.all([
+          infura.getBlockNumber(),
+          infura.getBalance(CONTRACT_ADDRESS)
+        ]);
+        $("infuraStatus").textContent = "Connected (Sepolia)";
+        $("blockNumber").textContent = block;
+        $("contractShown").textContent = CONTRACT_ADDRESS;
+        $("contractEth").textContent = ethers.formatEther(eth) + " ETH";
+      } catch (e) {
+        $("infuraStatus").textContent = "เชื่อมต่อ Infura ไม่ได้: " + errMsg(e);
+      }
+    }
+
+    async function loadHistory() {
+      try {
+        const [deps, wds] = await Promise.all([
+          readContract.queryFilter("Deposit", DEPLOY_BLOCK),
+          readContract.queryFilter("Withdraw", DEPLOY_BLOCK)
+        ]);
+        const rows = [...deps, ...wds].sort((a, b) => b.blockNumber - a.blockNumber || b.index - a.index);
+        $("history").innerHTML = rows.length
+          ? rows.map((ev) => {
+              const isDep = ev.fragment.name === "Deposit";
+              return `<tr>
+                <td>${ev.blockNumber}</td>
+                <td class="${isDep ? "in" : "out"}">${ev.fragment.name}</td>
+                <td><a href="${EXPLORER}/address/${ev.args.owner}" target="_blank">${short(ev.args.owner)}</a></td>
+                <td>${isDep ? "+" : "-"}${ethers.formatEther(ev.args.amount)}</td>
+                <td><a href="${EXPLORER}/tx/${ev.transactionHash}" target="_blank">${short(ev.transactionHash)}</a></td>
+              </tr>`;
+            }).join("")
+          : `<tr><td colspan="5">ยังไม่มีธุรกรรม</td></tr>`;
+      } catch (e) {
+        $("history").innerHTML = `<tr><td colspan="5">โหลดประวัติไม่ได้: ${errMsg(e)}</td></tr>`;
+      }
+    }
+
+    async function switchToSepolia() {
+      const current = await window.ethereum.request({ method: "eth_chainId" });
+      if (current === SEPOLIA_CHAIN_ID) return;
+      setStatus("กรุณากดยืนยันการสลับไป Sepolia ใน Metamask...");
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: SEPOLIA_CHAIN_ID }]
+      });
+    }
+
+    async function connect() {
+      if (!window.ethereum) {
+        setStatus("ไม่พบ Metamask กรุณาติดตั้ง Metamask extension", "err");
+        return;
+      }
+      try {
+        setStatus("กำลังเชื่อมต่อ Metamask...");
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        await switchToSepolia();
+
+        const browser = new ethers.BrowserProvider(window.ethereum);
+        signer = await browser.getSigner();
+        account = await signer.getAddress();
+        writeContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+        const net = await browser.getNetwork();
+        $("account").textContent = account;
+        $("network").textContent = `${net.name} (chainId ${net.chainId})`;
+        $("btnConnect").textContent = "Connected";
+        setButtons(true);
+        setStatus("เชื่อมต่อสำเร็จ", "ok");
+        addLog("Connected " + account);
+        await refresh();
+      } catch (e) {
+        setStatus("เชื่อมต่อไม่สำเร็จ: " + errMsg(e), "err");
+      }
+    }
+
+    // checkBlance() อ่านจาก msg.sender จึงส่ง from = กระเป๋าที่เชื่อมต่อไปกับ eth_call ของ Infura
+    async function refresh() {
+      const [bal, eth] = await Promise.all([
+        readContract.checkBlance({ from: account }),
+        infura.getBalance(account)
+      ]);
+      $("bankBalance").textContent = ethers.formatEther(bal);
+      $("walletEth").textContent = ethers.formatEther(eth) + " ETH";
+      await Promise.all([loadContractInfo(), loadHistory()]);
+    }
+
+    async function checkBalance() {
+      try {
+        await refresh();
+        setStatus("อัปเดตยอดเงินแล้ว", "ok");
+      } catch (e) {
+        setStatus("Check balance ไม่สำเร็จ: " + errMsg(e), "err");
+      }
+    }
+
+    // ส่งธุรกรรมผ่าน Metamask แล้วรอผลยืนยันจาก Infura
+    async function sendTx(label, amt, send) {
+      if (!amt || Number(amt) <= 0) {
+        setStatus("กรุณาใส่จำนวนเงินที่มากกว่า 0", "err");
+        return false;
+      }
+      try {
+        setStatus("กรุณายืนยันธุรกรรมใน Metamask...");
+        const tx = await send(ethers.parseEther(amt));
+        setStatus("รอยืนยันธุรกรรม (Infura)... " + tx.hash);
+        const receipt = await infura.waitForTransaction(tx.hash);
+        if (receipt.status !== 1) throw new Error("transaction failed");
+        setStatus(`${label} ${amt} ETH สำเร็จ`, "ok");
+        addLog(`${label} ${amt} ETH (tx ${tx.hash})`);
+        await refresh();
+        return true;
+      } catch (e) {
+        setStatus(`${label} ไม่สำเร็จ: ` + errMsg(e), "err");
+        return false;
+      }
+    }
+
+    async function deposit() {
+      const amt = $("depositAmt").value;
+      if (await sendTx("Deposit", amt, (v) => writeContract.deposit({ value: v }))) $("depositAmt").value = "";
+    }
+
+    async function withdraw() {
+      const amt = $("withdrawAmt").value;
+      if (await sendTx("Withdraw", amt, (v) => writeContract.withdraw(v))) $("withdrawAmt").value = "";
+    }
+
+    $("btnConnect").onclick = connect;
+    $("btnCheck").onclick = checkBalance;
+    $("btnDeposit").onclick = deposit;
+    $("btnWithdraw").onclick = withdraw;
+    $("btnHistory").onclick = loadHistory;
+
+    if (window.ethereum) {
+      window.ethereum.on?.("accountsChanged", () => location.reload());
+      window.ethereum.on?.("chainChanged", () => { if (writeContract) location.reload(); });
+    }
+
+    loadContractInfo();
+    loadHistory();
+  </script>
+</body>
+</html>
